@@ -1,0 +1,45 @@
+.component-container {
+    margin: auto;
+    width: 600px;
+}
+
+#stack-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: nowrap;
+    flex-direction: row;
+    max-width: 10rem;
+    margin: 1rem auto;
+}
+
+.stack {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: flex-end;
+}
+
+.stack-box {
+    width: 25px;
+    height: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.infix-stack-box {
+    border-width: 1px;
+    border-style: solid;
+}
+
+.operator-stack-box {
+    background: rgb(255, 121, 121);
+    border: 1px solid rgb(255, 40, 40);
+}
+
+.result-stack-box {
+    background: rgb(104, 131, 255);
+    border: 1px solid rgb(66, 66, 255); 
+}
