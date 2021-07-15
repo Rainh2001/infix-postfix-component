@@ -3,7 +3,7 @@
     width: 600px;
 }
 
-#stack-container {
+.stack-container {
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
@@ -11,6 +11,10 @@
     flex-direction: row;
     width: clamp(96px, 10rem, 15rem);
     margin: 1rem;
+}
+
+.answer-stack-container {
+    width: clamp(96px, 15rem, 20rem);
 }
 
 .stack {
@@ -30,7 +34,7 @@
     justify-content: center;
 }
 
-.infix-stack-box {
+.array-stack-box {
     border-width: 1px;
     border-style: solid;
 }

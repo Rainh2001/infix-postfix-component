@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import './InfixToPostfix.css'
 
@@ -36,20 +36,8 @@ function InfixToPostfix() {
     const [variables, setVariables] = useState({});
 
     const [answer, setAnswer] = useState(null);
-
-    useEffect(() => {
-        console.log(variables);
-    }, [variables]);
-
-    const addHistory = (operators, result, infixIndex) => {
-        setHistory(current => {
-            let newHistory = JSON.parse(JSON.stringify(current));
-            newHistory.push({
-                operators, result, infixIndex
-            });
-            return newHistory;
-        })
-    }
+    const [answerHistory, setAnswerHistory] = useState([]);
+    const [answerHistoryCount, setAnswerHistoryCount] = useState(0);
 
     const isNum = (char) => {
         return (char >= '0' && char <= '9');
@@ -64,21 +52,41 @@ function InfixToPostfix() {
         return operators.indexOf(char) > -1;
     }
 
-    const isValid = (char) => {
-        return isNum(char) || isAlpha(char) || isOperator(char);
-    }
+    // const postfixNumber = useMemo(() => {
+        // let arr = [];
+        // for(let element of postfix){
+        //     if(isAlpha(element)){
+        //         arr.push(variables[element] || element);
+        //     } else {
+        //         arr.push(element);
+        //     }
+        // }
+        // return arr;
+    // }, [variables, postfix]);
 
-    const calculateResult = useCallback(infixStr => {
+    const [postfixNumber, setPostfixNumber] = useState([]);
+
+    const calculateResult = useCallback(infix => {
+
+        const addHistory = (operators, result, infixIndex) => {
+            setHistory(current => {
+                let newHistory = JSON.parse(JSON.stringify(current));
+                newHistory.push({
+                    operators, result, infixIndex
+                });
+                return newHistory;
+            });
+        }
 
         setHistory([]);
 
         let operator = new Stack();
         let results = new Stack();
 
-        addHistory(JSON.parse(JSON.stringify(operator.items)), JSON.parse(JSON.stringify(results.items)), null);
+        addHistory([], [], null);
 
-        for(let i = 0; i < infixStr.length; i++){
-            let c = infixStr[i];
+        for(let i = 0; i < infix.length; i++){
+            let c = infix[i];
 
             if(isAlpha(c) && !(c in variables)){
                 setVariables(current => {
@@ -122,7 +130,32 @@ function InfixToPostfix() {
         setPostfix(JSON.parse(JSON.stringify(results.items)));
     }, [variables]);
 
+
     const calculateAnswer = useCallback(() => {
+
+        setPostfixNumber(() => {
+            let arr = [];
+            for(let element of postfix){
+                if(isAlpha(element)){
+                    arr.push(variables[element] || element);
+                } else {
+                    arr.push(element);
+                }
+            }
+            return arr;
+        })
+
+        setAnswerHistory([]);
+
+        const addHistory = (stack, postfixIndex, equation) => {
+            setAnswerHistory(current => {
+                let newHistory = JSON.parse(JSON.stringify(current));
+                newHistory.push({
+                    stack, equation, postfixIndex
+                });
+                return newHistory;
+            });
+        }
 
         const getCalculation = (num1, num2, operator) => {
             switch(operator){
@@ -136,19 +169,27 @@ function InfixToPostfix() {
         }
 
         let stack = new Stack();
+
+        addHistory([], null, null);
        
         for(let i = 0; i < postfix.length; i++){
             let element = postfix[i];
+            let calcStr = null;
 
             if(!isNaN(Number(element))){
-                stack.push(Number(element))
+                stack.push(Number(element));
             } else if(isAlpha(element)){
                 stack.push(variables[element]);
             } else {
                 let num2 = stack.pop();
                 let num1 = stack.pop();
-                stack.push(getCalculation(num1, num2, element));
+                let calc = getCalculation(num1, num2, element);
+                stack.push(calc);
+
+                calcStr = `${num1} ${element} ${num2} = ${calc}`;
             }
+
+            addHistory(JSON.parse(JSON.stringify(stack.items)), i, calcStr);
         }
 
         setAnswer(stack.pop());
@@ -261,7 +302,7 @@ function InfixToPostfix() {
                 </div>
 
                 <div
-                id="stack-container"
+                className="stack-container"
                 style={{
                     height: `${infix.length * (25 + 2)}px`
                 }}
@@ -275,7 +316,7 @@ function InfixToPostfix() {
                                 let highlighted = history[historyCount].infixIndex === i;
                                 return <div
                                 key={`${char}${i}`}
-                                className="stack-box infix-stack-box"
+                                className="stack-box array-stack-box"
                                 style={{
                                     background: highlighted ? "lime" : null,
                                     borderColor: highlighted ? "green" : "grey"
@@ -338,6 +379,7 @@ function InfixToPostfix() {
                                 type="text" 
                                 placeholder="Variable value"
                                 onChange={event => {
+                                    setAnswerHistoryCount(0);
                                     let num = Number(event.target.value);
 
                                     if(event.target.value === "") num = null;
@@ -364,14 +406,94 @@ function InfixToPostfix() {
                         for(let num of Object.values(variables)){
                             if(num === null) return; 
                         }
+                        setAnswerHistoryCount(0);
                         calculateAnswer();
                     }}
                     >Calculate Answer</button>
+
+                    { answer &&
+                    <>
+                        <div
+                        style={{
+                            marginTop: '1rem'
+                        }}
+                        >
+                            <button
+                            onClick={() => {
+                                setAnswerHistoryCount(current => {
+                                    if(current === 0) return current;
+                                    return current - 1;
+                                });
+                            }}
+                            >Previous</button>
+                            <button
+                            onClick={() => {
+                                setAnswerHistoryCount(current => {
+                                    if(current === answerHistory.length-1) return current;
+                                    return current + 1;
+                                });
+                            }}
+                            >Next</button>
+                            <span
+                            style={{ marginLeft: '1rem' }}
+                            >
+                                <button
+                                onClick={() => setAnswerHistoryCount(0)}
+                                >Start Again</button>
+                            </span>
+                        </div> 
+
+                        <div
+                        className="stack-container answer-stack-container"
+                        >
+                            <div
+                            className="stack"
+                            id="postfix-stack"
+                            >
+                                {
+                                    postfixNumber.map((element, i) => {
+                                        let highlighted = answerHistory[answerHistoryCount].postfixIndex === i;
+                                        return <div
+                                        key={`${element}${i}`}
+                                        className="stack-box array-stack-box"
+                                        style={{
+                                            background: highlighted ? "lime" : null,
+                                            borderColor: highlighted ? "green" : "grey"
+                                        }}
+                                        >
+                                            <span>{ element }</span>
+                                        </div>
+                                    })
+                                }
+                            </div>
+
+                            <span>
+                                {
+                                    answerHistory[answerHistoryCount].equation
+                                }
+                            </span>
+
+                            <div
+                            className="stack"
+                            id="number-stack"
+                            >
+                                {
+                                    answerHistory[answerHistoryCount].stack.slice().reverse().map((number, i) => {
+                                        return <div
+                                        key={`${number}${i}`}
+                                        className="stack-box operator-stack-box"
+                                        >
+                                            { number }
+                                        </div>
+                                    })
+                                }
+                            </div>
+                        </div>
                     
-                    {   answer &&
                         <div style={{marginTop: '0.5rem'}}>
                             <span>Answer: </span><span style={{fontWeight: 'bold'}}>{ answer }</span>
                         </div>
+                    </>
                     }                    
                 </div>
             </>
