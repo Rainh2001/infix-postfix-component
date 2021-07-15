@@ -30,7 +30,16 @@ function InfixToPostfix() {
     const [history, setHistory] = useState([]);
     const [historyCount, setHistoryCount] = useState(0);
 
-    const [infix, setInfix] = useState("");
+    const [infix, setInfix] = useState([]);
+    const [postfix, setPostfix] = useState([]);
+
+    const [variables, setVariables] = useState({});
+
+    const [answer, setAnswer] = useState(null);
+
+    useEffect(() => {
+        console.log(variables);
+    }, [variables]);
 
     const addHistory = (operators, result, infixIndex) => {
         setHistory(current => {
@@ -40,6 +49,23 @@ function InfixToPostfix() {
             });
             return newHistory;
         })
+    }
+
+    const isNum = (char) => {
+        return (char >= '0' && char <= '9');
+    }
+
+    const isAlpha = (char) => {
+        return (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z');
+    }
+
+    const isOperator = (char) => {
+        let operators = "+-/*^()".split("");
+        return operators.indexOf(char) > -1;
+    }
+
+    const isValid = (char) => {
+        return isNum(char) || isAlpha(char) || isOperator(char);
     }
 
     const calculateResult = useCallback(infixStr => {
@@ -54,7 +80,15 @@ function InfixToPostfix() {
         for(let i = 0; i < infixStr.length; i++){
             let c = infixStr[i];
 
-            if((c >= "a" && c <= "z") || (c >= "A" && c <= "Z") || (c >= "0" && c <= "9")){
+            if(isAlpha(c) && !(c in variables)){
+                setVariables(current => {
+                    let newV = JSON.parse(JSON.stringify(current));
+                    newV[c] = null;
+                    return newV;
+                });
+            }
+
+            if(isAlpha(c) || isNum(c)){
                 results.push(c);
             }
 
@@ -84,7 +118,42 @@ function InfixToPostfix() {
             results.push(operator.pop());
             addHistory(JSON.parse(JSON.stringify(operator.items)), JSON.parse(JSON.stringify(results.items)), null);
         }
-    }, []);
+
+        setPostfix(JSON.parse(JSON.stringify(results.items)));
+    }, [variables]);
+
+    const calculateAnswer = useCallback(() => {
+
+        const getCalculation = (num1, num2, operator) => {
+            switch(operator){
+                case '+': return num1 + num2;
+                case '-': return num1 - num2;
+                case '*': return num1 * num2;
+                case '/': return num1 / num2;
+                case '^': return Math.pow(num1, num2);
+                default: return null;
+            }
+        }
+
+        let stack = new Stack();
+       
+        for(let i = 0; i < postfix.length; i++){
+            let element = postfix[i];
+
+            if(!isNaN(Number(element))){
+                stack.push(Number(element))
+            } else if(isAlpha(element)){
+                stack.push(variables[element]);
+            } else {
+                let num2 = stack.pop();
+                let num1 = stack.pop();
+                stack.push(getCalculation(num1, num2, element));
+            }
+        }
+
+        setAnswer(stack.pop());
+
+    }, [postfix, variables]);
 
     return (
         <div
@@ -95,23 +164,6 @@ function InfixToPostfix() {
                 <button
                 onClick={() => {
                     var equation = equationInput.current.value.replaceAll(" ", "");
-
-                    const isNum = (char) => {
-                        return (char >= '0' && char <= '9');
-                    }
-
-                    const isAlpha = (char) => {
-                        return (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z');
-                    }
-
-                    const isOperator = (char) => {
-                        let operators = "+-/*^()".split("");
-                        return operators.indexOf(char) > -1;
-                    }
-
-                    const isValid = (char) => {
-                        return isNum(char) || isAlpha(char) || isOperator(char);
-                    }
 
                     // Separate constants from variables
                     for(let i = 1; i < equation.length; i++){
@@ -163,7 +215,8 @@ function InfixToPostfix() {
                 }}
                 >Convert To Postfix</button>
             </div>
-            { infix &&
+            { infix.length > 0 &&
+            <>
                 <div
                 style={{
                     marginTop: '1rem'
@@ -196,85 +249,132 @@ function InfixToPostfix() {
                         >Finish</button>
                     </span>
                 </div>
-            }
-            <div
-            style={{
-                marginTop: '1rem'
-            }}
-            >
-                { infix &&
+
+                <div
+                style={{
+                    marginTop: '1rem'
+                }}
+                >
                     <span>
                         Infix: <span style={{fontWeight: 'bold'}}>{ infix }</span>
                     </span>
-                }
-            </div>
+                </div>
 
-            { history.length > 0 &&
-                <>
+                <div
+                id="stack-container"
+                style={{
+                    height: `${infix.length * (25 + 2)}px`
+                }}
+                >
                     <div
-                    id="stack-container"
-                    style={{
-                        height: `${infix.length * (25 + 2)}px`
-                    }}
+                    className="stack"
+                    id="infix-stack"
                     >
-                        <div
-                        className="stack"
-                        id="infix-stack"
-                        >
-                            { 
-                                infix.map((char, i) => {
-                                    let highlighted = history[historyCount].infixIndex === i;
-                                    return <div
-                                    key={`${char}${i}`}
-                                    className="stack-box infix-stack-box"
-                                    style={{
-                                        background: highlighted ? "lime" : null,
-                                        borderColor: highlighted ? "green" : "grey"
-                                    }}
-                                    >
-                                        <span>{ char }</span>
-                                    </div>
-                                })
-                            }
-                        </div>
-                        <div
-                        className="stack"
-                        id="operators-stack"
-                        >
-                            {
-                                history[historyCount].operators.slice().reverse().map((operator, i) => {
-                                    return <div
-                                    key={`${operator}${i}`}
-                                    className="stack-box operator-stack-box"
-                                    >
-                                        { operator }
-                                    </div>
-                                })
-                            }
-                        </div>
-                        <div
-                        className="stack"
-                        id="results-stack"
-                        >
-                            {
-                                history[historyCount].result.slice().reverse().map((char, i) => {
-                                    return <div
-                                    key={`${char}${i}`}
-                                    className="stack-box result-stack-box"
-                                    >
-                                        { char }
-                                    </div>
-                                })
-                            }
-                        </div>
+                        { 
+                            infix.map((char, i) => {
+                                let highlighted = history[historyCount].infixIndex === i;
+                                return <div
+                                key={`${char}${i}`}
+                                className="stack-box infix-stack-box"
+                                style={{
+                                    background: highlighted ? "lime" : null,
+                                    borderColor: highlighted ? "green" : "grey"
+                                }}
+                                >
+                                    <span>{ char }</span>
+                                </div>
+                            })
+                        }
                     </div>
-        
-                    <div>
-                        <span>
-                            Postfix Result: <span style={{fontWeight: 'bold'}}>{ history[historyCount].result.join("") }</span>
-                        </span>
+                    <div
+                    className="stack"
+                    id="operators-stack"
+                    >
+                        {
+                            history[historyCount].operators.slice().reverse().map((operator, i) => {
+                                return <div
+                                key={`${operator}${i}`}
+                                className="stack-box operator-stack-box"
+                                >
+                                    { operator }
+                                </div>
+                            })
+                        }
                     </div>
-                </>
+                    <div
+                    className="stack"
+                    id="results-stack"
+                    >
+                        {
+                            history[historyCount].result.slice().reverse().map((char, i) => {
+                                return <div
+                                key={`${char}${i}`}
+                                className="stack-box result-stack-box"
+                                >
+                                    { char }
+                                </div>
+                            })
+                        }
+                    </div>
+                </div>
+
+                <div>
+                    <span>
+                        Postfix Result: <span style={{fontWeight: 'bold'}}>{ history[historyCount].result.join("") }</span>
+                    </span>
+                </div>
+
+                {/* Variable assignment container */}
+                <div
+                className="variable-assignment-container"
+                >
+                    {
+                        Object.keys(variables).map(key => {
+                            return <React.Fragment key={key}>
+                                <span style={{fontWeight: 'bold'}}>{ key }</span>
+                                <span style={{fontWeight: 'bold'}}>=</span>
+                                <input 
+                                style={{width: '8rem'}} 
+                                type="text" 
+                                placeholder="Variable value"
+                                onChange={event => {
+                                    let num = Number(event.target.value);
+
+                                    if(event.target.value === "") num = null;
+
+                                    if(isNaN(num)) return;
+
+                                    setVariables(current => {
+                                        let newV = JSON.parse(JSON.stringify(current));
+                                        newV[key] = num;
+                                        return newV;
+                                    });
+                                }}
+                                />
+                            </React.Fragment>
+                        })
+                    }
+                </div>
+                {/* Solution Container */}
+                <div
+                className="solution-container"
+                >
+                    <button 
+                    onClick={() => {
+                        for(let num of Object.values(variables)){
+                            if(num === null) return; 
+                        }
+                        calculateAnswer();
+                    }}
+                    >Calculate Answer</button>
+                    
+                    {   answer &&
+                        <div style={{marginTop: '0.5rem'}}>
+                            <span>Answer: </span><span style={{fontWeight: 'bold'}}>{ answer }</span>
+                        </div>
+                    }                    
+                </div>
+            </>
             }
         </div>
     );
